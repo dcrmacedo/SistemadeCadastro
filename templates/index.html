@@ -1,11 +1,584 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Clientes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://dcrmacedo.github.io/Encontre-aqui-o-seu-App/agr.png?v=2    ">
+    <title>Sistema de Cadastro de Pedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .modal {
+            backdrop-filter: blur(4px);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#221894',
+                        primaryDark: '#8a1d1d'
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
 </head>
-<body>
-    <h1>Bem-vindo ao Sistema de Cadastro de Clientes</h1>
-    <p>API rodando com Flask + SQLite + Render</p>
+<body class="bg-white dark:bg-gray-900 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">Sistema de Cadastro de Pedidos</h1>
+            <p class="text-gray-600 dark:text-gray-400">Gerencie seus clientes de forma simples e eficiente</p>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6">Cadastro de Cliente</h2>
+
+            <form id="clientForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome do Cliente *</label>
+                    <input type="text" id="clientName" required
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CPF *</label>
+                    <input type="text" id="clientCPF" required maxlength="14" placeholder="000.000.000-00"
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <div id="cpfError" class="text-red-500 text-sm mt-1 hidden">CPF inválido</div>
+                    <div id="cpfDuplicateError" class="text-red-500 text-sm mt-1 hidden">Este CPF já está cadastrado.</div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data</label>
+                    <input type="text" id="currentDate" readonly
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código do Orçamento *</label>
+                    <input type="text" id="budgetCode" required
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+
+                <div class="md:col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código do Pedido *</label>
+                    <input type="text" id="orderCode" required
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                </div>
+
+                <div class="md:col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">URL do Pedido</label>
+                    <input type="url" id="orderUrl"
+                           class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="https://exemplo.com/pedido/123">
+                </div>
+
+                <div class="md:col-span-2 flex gap-4">
+                    <button type="submit" id="saveBtn"
+                            class="flex-1 bg-primary hover:bg-primaryDark text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 text-base">
+                        Salvar Cliente
+                    </button>
+                    <button type="button" id="clearBtn"
+                            class="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 text-base">
+                        Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
+            <div class="flex-1 flex items-center gap-4 w-full sm:w-auto">
+                <span class="text-sm text-gray-600 dark:text-gray-400">Total de registros: <span id="totalRecords" class="font-semibold">0</span></span>
+            </div>
+
+            <div class="flex-1 w-full sm:w-auto">
+                <label for="search" class="sr-only">Pesquisar cliente</label>
+                <input type="text" id="search" placeholder="Pesquisar por nome, CPF ou código..."
+                       class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+            </div>
+
+            <button id="exportBtn"
+                    class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-base w-full sm:w-auto">
+                📊 Exportar todos para Excel
+            </button>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Registros Cadastrados</h2>
+                <div class="table-container">
+                    <table class="w-full">
+                        <thead class="bg-gray-100 dark:bg-gray-700 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Nome</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">CPF</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Data</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Cód. Orçamento</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Cód. Pedido</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Link do Pedido</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTable" class="divide-y divide-gray-200 dark:divide-gray-600">
+                            <tr id="emptyState">
+                                <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                    Nenhum cliente cadastrado ou encontrado
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Editar Cliente</h3>
+                <form id="editForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome do Cliente</label>
+                        <input type="text" id="editName" required
+                               class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CPF</label>
+                        <input type="text" id="editCPF" required maxlength="14"
+                               class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código do Orçamento</label>
+                        <input type="text" id="editBudget" required
+                               class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código do Pedido</label>
+                        <input type="text" id="editOrder" required
+                               class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">URL do Pedido</label>
+                        <input type="url" id="editOrderUrl"
+                               class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" class="flex-1 bg-primary hover:bg-primaryDark text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-base">
+                            Salvar
+                        </button>
+                        <button type="button" id="cancelEdit" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-base">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Confirmar Exclusão</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.</p>
+                <div class="flex gap-3">
+                    <button id="confirmDelete" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-base">
+                        Excluir
+                    </button>
+                    <button id="cancelDelete" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-base">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#221894',
+                        primaryDark: '#8a1d1d'
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+        // Dark mode setup
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Data storage
+        let clients = [];
+        let editingId = null;
+        let deleteId = null;
+
+        // CPF validation
+        function validateCPF(cpf) {
+            cpf = cpf.replace(/[^\d]+/g, '');
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+            let sum = 0;
+            for (let i = 0; i < 9; i++) {
+                sum += parseInt(cpf.charAt(i)) * (10 - i);
+            }
+            let remainder = 11 - (sum % 11);
+            if (remainder === 10 || remainder === 11) remainder = 0;
+            if (remainder !== parseInt(cpf.charAt(9))) return false;
+
+            sum = 0;
+            for (let i = 0; i < 10; i++) {
+                sum += parseInt(cpf.charAt(i)) * (11 - i);
+            }
+            remainder = 11 - (sum % 11);
+            if (remainder === 10 || remainder === 11) remainder = 0;
+            if (remainder !== parseInt(cpf.charAt(10))) return false;
+
+            return true;
+        }
+
+        // CPF mask
+        function applyCPFMask(value) {
+            value = value.replace(/\D/g, '');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            return value;
+        }
+
+        // Format date
+        function formatDate(date) {
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Initialize current date
+        function initializeDate() {
+            document.getElementById('currentDate').value = formatDate(new Date());
+        }
+
+        // Fetch clients from the backend
+        async function fetchClients() {
+            try {
+                const response = await fetch('/api/clients');
+                clients = await response.json();
+                updateTable();
+                updateExportButton();
+            } catch (error) {
+                console.error('Erro ao buscar clientes:', error);
+            }
+        }
+
+        // Add client
+        async function addClient(clientData) {
+            try {
+                const response = await fetch('/api/clients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData)
+                });
+
+                if (response.ok) {
+                    await fetchClients();
+                    document.getElementById('clientForm').reset();
+                    initializeDate();
+                } else if (response.status === 409) {
+                    const error = await response.json();
+                    document.getElementById('cpfDuplicateError').textContent = error.message;
+                    document.getElementById('cpfDuplicateError').classList.remove('hidden');
+                    document.getElementById('clientCPF').classList.add('border-red-500');
+                } else {
+                    console.error('Erro ao salvar cliente:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+            }
+        }
+
+        // Update client
+        async function updateClient(id, clientData) {
+            try {
+                const response = await fetch(`/api/clients/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData)
+                });
+
+                if (response.ok) {
+                    await fetchClients();
+                    document.getElementById('editModal').classList.add('hidden');
+                    editingId = null;
+                } else {
+                    console.error('Erro ao atualizar cliente:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+            }
+        }
+
+        // Delete client
+        async function deleteClient(id) {
+            try {
+                const response = await fetch(`/api/clients/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    await fetchClients();
+                } else {
+                    console.error('Erro ao excluir cliente:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+            }
+        }
+
+        // Update table
+        function updateTable(filteredClients = clients) {
+            const tbody = document.getElementById('clientsTable');
+
+            if (filteredClients.length === 0) {
+                tbody.innerHTML = '<tr id="emptyState"><td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">Nenhum cliente cadastrado ou encontrado</td></tr>';
+            } else {
+                tbody.innerHTML = filteredClients.map(client => `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 fade-in">
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${client.name}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${client.cpf}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${client.date}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${client.budgetCode}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">${client.orderCode}</td>
+                        <td class="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">
+                            ${client.orderUrl ? `<a href="${client.orderUrl}" target="_blank" class="hover:underline">Link do Pedido</a>` : 'N/A'}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <button onclick="editClient(${client.id})" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-2">✏️ Editar</button>
+                            <button onclick="exportSingleClient(${client.id})" class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 mr-2">📊 Exportar</button>
+                            <button onclick="confirmDeleteClient(${client.id})" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">🗑️ Excluir</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('totalRecords').textContent = clients.length;
+        }
+
+        // Update export button
+        function updateExportButton() {
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.disabled = clients.length === 0;
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            if (clients.length === 0) return;
+
+            const ws = XLSX.utils.json_to_sheet(clients.map(client => ({
+                'Nome': client.name,
+                'CPF': client.cpf,
+                'Data': client.date,
+                'Código do Orçamento': client.budgetCode,
+                'Código do Pedido': client.orderCode,
+                'URL do Pedido': client.orderUrl
+            })));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+
+            const filename = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        }
+
+        // Export single client to Excel
+        function exportSingleClient(id) {
+            const client = clients.find(c => c.id === id);
+            if (!client) return;
+
+            const ws = XLSX.utils.json_to_sheet([
+                {
+                    'Nome': client.name,
+                    'CPF': client.cpf,
+                    'Data': client.date,
+                    'Código do Orçamento': client.budgetCode,
+                    'Código do Pedido': client.orderCode,
+                    'URL do Pedido': client.orderUrl
+                }
+            ]);
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, `Cliente_${client.name}`);
+
+            const filename = `cliente_${client.name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        }
+
+        // Edit client
+        function editClient(id) {
+            const client = clients.find(c => c.id === id);
+            if (!client) return;
+
+            editingId = id;
+            document.getElementById('editName').value = client.name;
+            document.getElementById('editCPF').value = client.cpf;
+            document.getElementById('editBudget').value = client.budgetCode;
+            document.getElementById('editOrder').value = client.orderCode;
+            document.getElementById('editOrderUrl').value = client.orderUrl || '';
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        // Confirm delete client
+        function confirmDeleteClient(id) {
+            deleteId = id;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDate();
+            fetchClients(); // Carrega os clientes do banco de dados ao iniciar
+
+            // CPF mask and validation
+            const cpfInput = document.getElementById('clientCPF');
+            const editCpfInput = document.getElementById('editCPF');
+
+            [cpfInput, editCpfInput].forEach(input => {
+                input.addEventListener('input', function(e) {
+                    e.target.value = applyCPFMask(e.target.value);
+                });
+
+                input.addEventListener('blur', function(e) {
+                    const isValid = validateCPF(e.target.value);
+                    const errorDiv = document.getElementById('cpfError');
+                    const duplicateErrorDiv = document.getElementById('cpfDuplicateError');
+
+                    if (e.target.id === 'clientCPF') {
+                        errorDiv.classList.toggle('hidden', isValid || !e.target.value);
+                        duplicateErrorDiv.classList.add('hidden');
+                        e.target.classList.toggle('border-red-500', !isValid && e.target.value);
+                    }
+                });
+            });
+
+            // Form submission
+            document.getElementById('clientForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const name = document.getElementById('clientName').value.trim();
+                const cpf = document.getElementById('clientCPF').value;
+                const date = document.getElementById('currentDate').value;
+                const budgetCode = document.getElementById('budgetCode').value.trim();
+                const orderCode = document.getElementById('orderCode').value.trim();
+                const orderUrl = document.getElementById('orderUrl').value.trim();
+
+                const isValidCpf = validateCPF(cpf);
+
+                const cpfErrorDiv = document.getElementById('cpfError');
+                const cpfDuplicateErrorDiv = document.getElementById('cpfDuplicateError');
+
+                cpfErrorDiv.classList.add('hidden');
+                cpfDuplicateErrorDiv.classList.add('hidden');
+                document.getElementById('clientCPF').classList.remove('border-red-500');
+
+                if (!isValidCpf) {
+                    cpfErrorDiv.classList.remove('hidden');
+                    document.getElementById('clientCPF').classList.add('border-red-500');
+                    return;
+                }
+
+                const clientData = { name, cpf, date, budgetCode, orderCode, orderUrl };
+                await addClient(clientData);
+            });
+
+            // Edit form submission
+            document.getElementById('editForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const name = document.getElementById('editName').value.trim();
+                const cpf = document.getElementById('editCPF').value;
+                const budgetCode = document.getElementById('editBudget').value.trim();
+                const orderCode = document.getElementById('editOrder').value.trim();
+                const orderUrl = document.getElementById('editOrderUrl').value.trim();
+
+                if (!validateCPF(cpf)) return;
+
+                const client = clients.find(c => c.id === editingId);
+                const clientData = { name, cpf, date: client.date, budgetCode, orderCode, orderUrl };
+                await updateClient(editingId, clientData);
+            });
+
+            // Clear form
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                document.getElementById('clientForm').reset();
+                initializeDate();
+                document.getElementById('cpfError').classList.add('hidden');
+                document.getElementById('cpfDuplicateError').classList.add('hidden');
+                document.getElementById('clientCPF').classList.remove('border-red-500');
+            });
+
+            // Search functionality
+            document.getElementById('search').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredClients = clients.filter(client => {
+                    return client.name.toLowerCase().includes(searchTerm) ||
+                           client.cpf.includes(searchTerm) ||
+                           client.budgetCode.toLowerCase().includes(searchTerm) ||
+                           client.orderCode.toLowerCase().includes(searchTerm);
+                });
+                updateTable(filteredClients);
+            });
+
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+
+            // Modal controls
+            document.getElementById('cancelEdit').addEventListener('click', function() {
+                document.getElementById('editModal').classList.add('hidden');
+                editingId = null;
+            });
+
+            document.getElementById('confirmDelete').addEventListener('click', async function() {
+                if (deleteId) {
+                    await deleteClient(deleteId);
+                    document.getElementById('deleteModal').classList.add('hidden');
+                    deleteId = null;
+                }
+            });
+
+            document.getElementById('cancelDelete').addEventListener('click', function() {
+                document.getElementById('deleteModal').classList.add('hidden');
+                deleteId = null;
+            });
+
+            // Close modals on outside click
+            [document.getElementById('editModal'), document.getElementById('deleteModal')].forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.add('hidden');
+                        editingId = null;
+                        deleteId = null;
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
