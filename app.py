@@ -3,25 +3,28 @@ from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 
 # Configuração do Flask e do SQLAlchemy
-# A URL de conexão com o banco de dados será obtida de uma variável de ambiente.
-# Se a variável de ambiente não existir (ambiente local), ele usa o SQLite.
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///clients.db')
+app = Flask(__name__)
 
-# Se a URL for do Render (PostgreSQL), ela começa com 'postgres://', mas o SQLAlchemy
-# precisa de 'postgresql://'. Esta linha faz a substituição para garantir a compatibilidade.
+# Obter URL do banco de dados da variável de ambiente
+database_url = os.environ.get('DATABASE_URL')
+
+# Se não houver DATABASE_URL (ambiente local), usar SQLite como fallback
+if not database_url:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    database_url = 'sqlite:///' + os.path.join(basedir, 'clients.db')
+
+# Ajustar formato da URL para PostgreSQL (se necessário)
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-# Log para verificar a URL do banco de dados (útil para debug)
-print(f"Database URL: {database_url}")
-
-app = Flask(__name__)
+# Configurações do SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300
 }
+
 db = SQLAlchemy(app)
 
 # Modelo do banco de dados para os clientes
@@ -104,7 +107,10 @@ if __name__ == '__main__':
     with app.app_context():
         try:
             db.create_all()
-            print("Tabelas criadas com sucesso")
+            print("Banco de dados inicializado com sucesso!")
+            print(f"Usando banco de dados: {app.config['SQLALCHEMY_DATABASE_URI']}")
         except Exception as e:
-            print(f"Erro ao criar tabelas: {str(e)}")
-    app.run(debug=True)
+            print(f"Erro ao inicializar banco de dados: {e}")
+    
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port) 
