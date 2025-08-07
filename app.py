@@ -98,3 +98,8 @@ if __name__ == '__main__':
         # A primeira vez que o aplicativo é iniciado no Render, ele irá
         # criar o banco de dados se ele ainda não existir.
         db.create_all()
+    # No ambiente de produção, o Gunicorn é responsável por rodar a aplicação,
+    # então a linha app.run() não é usada.
+    # No entanto, a deixamos para facilitar a execução local.
+    # Para o Render, o Gunicorn vai usar o 'Procfile' para iniciar a aplicação.
+    app.run(debug=True)
