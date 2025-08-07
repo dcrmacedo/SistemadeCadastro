@@ -98,4 +98,4 @@ if __name__ == '__main__':
         # A primeira vez que o aplicativo é iniciado no Render, ele irá
         # criar o banco de dados se ele ainda não existir.
         db.create_all()
-    app.run(debug=True)
+    
