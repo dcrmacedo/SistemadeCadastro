@@ -3,12 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 
 # Configuração do Flask e do SQLAlchemy
-# A URL de conexão com o banco de dados será obtida de uma variável de ambiente
-# Se a variável de ambiente não existir (ambiente local), ele usa o SQLite
+# A URL de conexão com o banco de dados será obtida de uma variável de ambiente.
+# Se a variável de ambiente não existir (ambiente local), ele usa o SQLite.
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///clients.db')
 
 # Se a URL for do Render (PostgreSQL), ela começa com 'postgres://', mas o SQLAlchemy
-# precisa de 'postgresql://'. Esta linha faz a substituição.
+# precisa de 'postgresql://'. Esta linha faz a substituição para garantir a compatibilidade.
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
@@ -98,4 +98,8 @@ if __name__ == '__main__':
         # A primeira vez que o aplicativo é iniciado no Render, ele irá
         # criar o banco de dados se ele ainda não existir.
         db.create_all()
-    app.run(debug=True)
+    # No ambiente de produção, o Gunicorn é responsável por rodar a aplicação,
+    # então a linha app.run() não é usada.
+    # No entanto, a deixamos para facilitar a execução local.
+    # Para o Render, o Gunicorn vai usar o 'Procfile' para iniciar a aplicação.
+    # app.run(debug=True)
