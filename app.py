@@ -12,9 +12,16 @@ database_url = os.environ.get('DATABASE_URL', 'sqlite:///clients.db')
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
+# Log para verificar a URL do banco de dados (útil para debug)
+print(f"Database URL: {database_url}")
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300
+}
 db = SQLAlchemy(app)
 
 # Modelo do banco de dados para os clientes
@@ -95,11 +102,9 @@ def handle_single_client(client_id):
 
 if __name__ == '__main__':
     with app.app_context():
-        # A primeira vez que o aplicativo é iniciado no Render, ele irá
-        # criar o banco de dados se ele ainda não existir.
-        db.create_all()
-    # No ambiente de produção, o Gunicorn é responsável por rodar a aplicação,
-    # então a linha app.run() não é usada.
-    # No entanto, a deixamos para facilitar a execução local.
-    # Para o Render, o Gunicorn vai usar o 'Procfile' para iniciar a aplicação.
+        try:
+            db.create_all()
+            print("Tabelas criadas com sucesso")
+        except Exception as e:
+            print(f"Erro ao criar tabelas: {str(e)}")
     app.run(debug=True)
